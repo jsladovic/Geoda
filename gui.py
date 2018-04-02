@@ -12,22 +12,18 @@ class Window(QtGui.QMainWindow):
     def home(self):
         self.create_file_pickers()
         self.create_radio_buttons()
-        self.create_confirm_button()
-        self.create_quit_button()
+
+        self.create_button('Quit', self.close_application, 125)
+        self.create_button('Confirm', self.confirm, 375)
+        self.create_button('Backup', self.backup, 250)
         
         self.show()
 
-    def create_quit_button(self):
-        self.quit_button = QtGui.QPushButton('Quit', self)
-        self.quit_button.clicked.connect(self.close_application)
-        self.quit_button.resize(100, 25)
-        self.quit_button.move(250, 160)
-
-    def create_confirm_button(self):
-        self.quit_button = QtGui.QPushButton('Confirm', self)
-        self.quit_button.clicked.connect(self.confirm)
-        self.quit_button.resize(100, 25)
-        self.quit_button.move(375, 160)
+    def create_button(self, text, function, x_position):
+        button = QtGui.QPushButton(text, self)
+        button.clicked.connect(function)
+        button.resize(100, 25)
+        button.move(x_position, 160)
 
     def create_file_pickers(self):
         self.input_file_lbl = QtGui.QLineEdit(self)
@@ -46,7 +42,7 @@ class Window(QtGui.QMainWindow):
         self.output_picker_button = QtGui.QPushButton('Select output folder', self)
         self.output_picker_button.resize(120, 25)
         self.output_picker_button.clicked.connect(self.get_output_filename)
-        self.output_picker_button.move(375, 50)       
+        self.output_picker_button.move(375, 50)
 
     def create_radio_buttons(self):
         self.rb_first_last = QtGui.QRadioButton('First and last lines only', self)
@@ -67,11 +63,22 @@ class Window(QtGui.QMainWindow):
         self.spin_box.resize(self.spin_box.minimumSizeHint())
 
     def confirm(self):
-        input_path = str(self.input_file_lbl.text()).replace('\\', '/')
+        input_path, output_path = self.get_file_paths()
         output_path = str(self.output_file_lbl.text()).replace('\\', '/')
         cor = CorParser()
         cor.parse_files(input_path, output_path, self.rb_first_last.isChecked(), self.spin_box.value())
-        self.show_popup()
+        self.show_popup('Files successfully parsed')
+
+    def backup(self):
+        input_path, output_path = self.get_file_paths()
+        cor = CorParser()
+        cor.backup_files(input_path, output_path)
+        self.show_popup('Backup successful')
+
+    def get_file_paths(self):
+        input_path = str(self.input_file_lbl.text()).replace('\\', '/')
+        output_path = str(self.output_file_lbl.text()).replace('\\', '/')
+        return input_path, output_path
 
     def get_input_filename(self):
         self.get_filename(self.input_file_lbl)
@@ -89,11 +96,11 @@ class Window(QtGui.QMainWindow):
     def close_application(self):
         sys.exit()
 
-    def show_popup(self):
+    def show_popup(self, message):
         msg = QtGui.QMessageBox()
         msg.setIcon(QtGui.QMessageBox.Information)
 
-        msg.setText('Files successfully parsed')
+        msg.setText(message)
         msg.setWindowTitle('Success')
         msg.setStandardButtons(QtGui.QMessageBox.Ok)
 	

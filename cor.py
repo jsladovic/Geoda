@@ -1,31 +1,75 @@
-from os.path import join
+import os
 from scandir import walk
+from shutil import copy2
 
 class CorParser:
     def __init__(self):
         self.output_files = {}
 
+    def backup_files(self, input_path, output_path):
+        print '\nFile backup started'
+        sorted_files = self.sort_files_into_dictionary(self.get_all_files_in_path(input_path))
+        for group in sorted_files:
+            cor_filename = group + '.cor'
+            if cor_filename not in sorted_files[group]:
+                continue
+            
+            first_line = self.read_lines_from_file(input_path, cor_filename, True).split()
+            if len(first_line) < 2:
+                print 'Invalid file ' + cor_filename
+                continue
+            
+            folder_name =  first_line[1] + '/'
+            for filename in sorted_files[group]:
+                path = os.path.join(output_path, folder_name)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                copy2(os.path.join(input_path, filename), path)
+
     def parse_files(self, input_path, output_path, first_last_only, n):
-        for root, dirs, files in walk(input_path):
-            for filename in files:
-                if not filename.endswith('.cor'):
-                     continue
+        print '\nFile parsing started'
+        files = self.get_all_files_in_path(input_path)
+        for filename in files:
+            if not filename.endswith('.cor'):
+                continue
 
-                print filename
-                [antenna_name, output_file] = self.find_output_file(input_path, output_path, filename)
-                if output_file == None:
-                    print 'Error when finding antenna type for file ' + filename
-                    continue
+            print filename
+            [antenna_name, output_file] = self.find_output_file(input_path, output_path, filename)
+            if output_file == None:
+                print 'Error when finding antenna type for file ' + filename
+                continue
 
-                if first_last_only:
-                    self.write_first_and_last_line_to_output(input_path, filename, antenna_name, output_file)
-                else:
-                    self.write_every_n_lines_to_output(input_path, filename, antenna_name, output_file, n)
+            if first_last_only:
+                self.write_first_and_last_line_to_output(input_path, filename, antenna_name, output_file)
+            else:
+                self.write_every_n_lines_to_output(input_path, filename, antenna_name, output_file, n)
                 
         self.close_output_files()
+
+    def get_all_files_in_path(self, path):
+        files = []
+        for root, dirs, filenames in walk(path):
+            for filename in filenames:
+                if root != path:
+                    continue
+                files.append(filename)
+
+        return files
+
+    def sort_files_into_dictionary(self, files):
+        dictionary = {}
+        for filename in files:
+            main_part = filename.split('.')[0]
+            if main_part not in dictionary:
+                dictionary[main_part] = []
+            dictionary[main_part].append(filename)
+
+        return dictionary
     
-    def read_lines_from_file(self, path, filename):
-        with open(join(path, filename)) as f:
+    def read_lines_from_file(self, path, filename, only_first_line = False):
+        with open(os.path.join(path, filename)) as f:
+            if only_first_line:
+                return f.readline()
             return f.readlines()
 
     def format_line(self, line, antenna_name, filename):
@@ -62,7 +106,7 @@ class CorParser:
         if (output_filename in self.output_files):
             return antenna_name, self.output_files[output_filename]
 
-        self.output_files[output_filename] = open(join(output_path, output_filename), 'w')
+        self.output_files[output_filename] = open(os.path.join(output_path, output_filename), 'w')
         return antenna_name, self.output_files[output_filename]
 
     def close_output_files(self):
