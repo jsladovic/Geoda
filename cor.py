@@ -3,6 +3,8 @@ from scandir import walk
 from shutil import copy2
 import time
 
+from xml.etree.ElementTree import Element, SubElement, tostring
+
 class CorParser:
     def __init__(self):
         self.output_files = {}
@@ -42,9 +44,12 @@ class CorParser:
                     os.makedirs(path)
                 copy2(os.path.join(input_path, filename), path)
 
-    def parse_files(self, input_path, output_path, first_last_only, n):
+    def parse_files(self, input_path, output_path, first_last_only, n, create_kml = False):
         print '\nFile parsing started'
         files = self.get_all_files_in_path(input_path)
+
+        if create_kml:
+            kml_data = []
         for filename in files:
             if not filename.endswith('.cor'):
                 continue
@@ -56,11 +61,55 @@ class CorParser:
                 continue
 
             if first_last_only:
-                self.write_first_and_last_line_to_output(input_path, filename, antenna_name, output_file)
+                lines = self.write_first_and_last_line_to_output(input_path, filename, antenna_name, output_file)
             else:
-                self.write_every_n_lines_to_output(input_path, filename, antenna_name, output_file, n)
+                lines = self.write_every_n_lines_to_output(input_path, filename, antenna_name, output_file, n)
+
+            if create_kml:
+                kml_data.append([filename.split('.')[0], lines])
                 
         self.close_output_files()
+        if create_kml:
+            self.create_kml_file(output_path, kml_data)
+
+    def create_kml_file(self, output_path, kml_data):
+        if len(kml_data) == 0:
+            return
+        elif len(kml_data) == 1:
+            filename = kml_data[0][0] + '.kml'
+        else:
+            filename = kml_data[0][0] + '-' + kml_data[-1][0]
+        
+        kml = Element('kml')
+        document = SubElement(kml, 'Document')
+        folder = SubElement(document, 'Folder')
+
+        name = SubElement(folder, 'name')
+        name.text = filename
+
+        for element in kml_data:
+            placemark = SubElement(folder, 'Placemark')
+
+            description = SubElement(placemark, 'name')
+            description.text = element[0]
+            
+            line_string = SubElement(placemark, 'LineString')
+            coordinates = SubElement(line_string, 'coordinates')
+
+            for line in element[1]:
+                line = self.transform_coordinates(line)
+                if coordinates.text is None:
+                    coordinates.text = line
+                else:
+                    coordinates.text += ' ' + line + ' '
+
+        output_file = open(os.path.join(output_path, filename + '.kml'), 'w')
+        output_file.write(tostring(kml))
+        output_file.close()
+
+    def transform_coordinates(self, line):
+        elements = line.split()
+        return elements[5] + ',' + elements[3]
 
     def get_all_files_in_path(self, path):
         files = []
@@ -100,15 +149,22 @@ class CorParser:
         lines = self.read_lines_from_file(path, filename)
         if len(lines) < 2:
             return
-        
+
         output_file.write(self.format_line(lines[0], antenna_name, filename))
         output_file.write(self.format_line(lines[-1], antenna_name, filename))
+
+        return [lines[0], lines[-1]]
         
     def write_every_n_lines_to_output(self, path, filename, antenna_name, output_file, n):
         lines = self.read_lines_from_file(path, filename)
         every_nth_line = lines[0::n]
+        if (len(lines) % n) != 1:
+            every_nth_line.append(lines[-1])
+        
         for line in every_nth_line:
             output_file.write(self.format_line(line, antenna_name, filename))
+
+        return every_nth_line
 
     def line_cor_to_gpgga(self, line, step):
         elements = line.split()

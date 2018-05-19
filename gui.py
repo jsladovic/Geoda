@@ -52,11 +52,12 @@ class Window(QtGui.QMainWindow):
         self.output_picker_button.move(375, 50)
 
     def create_radio_buttons(self):
-        self.rb_first_last = self.create_radio_button('First and last lines only', 100, True)
-        self.every_n_lines = self.create_radio_button('Select every n-th line', 125, False)
+        self.rb_first_last = self.create_radio_button('First and last lines only', 85, True)
+        self.every_n_lines = self.create_radio_button('Select every n-th line', 110, False)
+        self.check_box_kml = self.create_checkbox('Create KML file?', 128, True)
 
         self.spin_box = QtGui.QSpinBox(self)
-        self.spin_box.move(160, 124)
+        self.spin_box.move(160, 109)
         self.spin_box.setValue(10)
         self.spin_box.setMinimum(1)
         self.spin_box.setSingleStep(5)
@@ -69,14 +70,21 @@ class Window(QtGui.QMainWindow):
         rb.resize(rb.minimumSizeHint())
         return rb
 
+    def create_checkbox(self, text, y, checked = False):
+        cb = QtGui.QCheckBox(text, self)
+        cb.move(25, y)
+        cb.setChecked(checked)
+        return cb
+
     def confirm(self):
         input_path, output_path = self.get_file_paths()
         output_path = str(self.output_file_lbl.text()).replace('\\', '/')        
         number_of_lines = self.spin_box.value()
         first_last_only = self.rb_first_last.isChecked()
+        create_kml = self.check_box_kml.isChecked()
         
         cor = CorParser()
-        cor.parse_files(input_path, output_path, first_last_only, number_of_lines)
+        cor.parse_files(input_path, output_path, first_last_only, number_of_lines, create_kml)
         self.show_popup('Files successfully parsed')
 
     def backup(self):
