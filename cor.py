@@ -65,7 +65,7 @@ class CorParser:
             else:
                 lines = self.write_every_n_lines_to_output(input_path, filename, antenna_name, output_file, n)
 
-            if create_kml:
+            if create_kml and lines is not None:
                 kml_data.append([filename.split('.')[0], lines])
                 
         self.close_output_files()
@@ -157,6 +157,9 @@ class CorParser:
         
     def write_every_n_lines_to_output(self, path, filename, antenna_name, output_file, n):
         lines = self.read_lines_from_file(path, filename)
+        if len(lines) == 0:
+            return None
+
         every_nth_line = lines[0::n]
         if (len(lines) % n) != 1:
             every_nth_line.append(lines[-1])
